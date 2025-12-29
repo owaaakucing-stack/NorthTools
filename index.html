@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FCM Tools</title>
+
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+
+<style>
+:root{
+    --primary:#1a73e8;
+    --surface:#ffffff;
+    --bg:#f1f3f4;
+    --outline:#dadce0;
+}
+*{
+    box-sizing:border-box;
+    font-family: 'Segoe UI', Roboto, sans-serif;
+}
+body{
+    margin:0;
+    min-height:100vh;
+    background:var(--bg);
+    display:flex;
+    justify-content:center;
+    align-items:center;
+}
+.card{
+    width:100%;
+    max-width:460px;
+    background:var(--surface);
+    border-radius:28px;
+    padding:28px;
+    box-shadow:0 8px 30px rgba(0,0,0,.12);
+}
+.logo{
+    font-size:26px;
+    font-weight:600;
+    color:var(--primary);
+    text-align:center;
+}
+.sub{
+    text-align:center;
+    color:#555;
+    margin:8px 0 24px;
+    font-size:14px;
+}
+input, textarea{
+    width:100%;
+    padding:14px 16px;
+    border-radius:16px;
+    border:1px solid var(--outline);
+    margin-bottom:12px;
+    font-size:14px;
+}
+input:focus, textarea:focus{
+    outline:none;
+    border-color:var(--primary);
+}
+textarea{min-height:90px}
+.btn{
+    width:100%;
+    padding:14px;
+    border-radius:999px;
+    border:none;
+    background:var(--primary);
+    color:white;
+    font-weight:600;
+    cursor:pointer;
+    margin-top:8px;
+}
+.btn-tonal{
+    background:#e8f0fe;
+    color:#174ea6;
+}
+.row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+}
+.link{
+    text-align:center;
+    margin-top:14px;
+    color:var(--primary);
+    cursor:pointer;
+    font-size:13px;
+}
+.logout{background:#d93025}
+.export{background:#34a853}
+.file{
+    background:#fbbc04;
+    color:#000;
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="card" id="loginBox">
+    <div class="logo">FCM</div>
+    <div class="sub">Masuk untuk menggunakan tools</div>
+
+    <input id="user" placeholder="Username">
+    <input id="pass" type="password" placeholder="Password">
+
+    <button class="btn" onclick="login()">Login</button>
+    <div class="link" onclick="register()">Buat akun baru</div>
+</div>
+
+<!-- TOOLS -->
+<div class="card" id="toolsBox" style="display:none">
+    <div class="logo">FCM Tools</div>
+    <div class="sub">Base64 • Encrypt • Decrypt</div>
+
+    <!-- LOAD FILE -->
+    <input type="file" id="fileInput" accept=".txt,.json,.js,.html,.css" hidden>
+    <button class="btn file" onclick="fileInput.click()">📂 Load File</button>
+
+    <textarea id="input" placeholder="Input teks atau isi otomatis dari file..."></textarea>
+    <textarea id="output" placeholder="Hasil..."></textarea>
+
+    <div class="row">
+        <button class="btn btn-tonal" onclick="toBase64()">Encode Base64</button>
+        <button class="btn btn-tonal" onclick="fromBase64()">Decode Base64</button>
+        <button class="btn btn-tonal" onclick="encrypt()">Encrypt</button>
+        <button class="btn btn-tonal" onclick="decrypt()">Decrypt</button>
+    </div>
+
+    <button class="btn export" onclick="exportTXT()">Export TXT</button>
+    <button class="btn export" onclick="exportJSON()">Export JSON</button>
+    <button class="btn logout" onclick="logout()">Logout</button>
+</div>
+
+<script>
+/* ===== AUTH ===== */
+const users = JSON.parse(localStorage.getItem("fcm_users")) || {};
+
+function register(){
+    if(!user.value || !pass.value) return alert("Lengkapi data");
+    if(users[user.value]) return alert("Username sudah ada");
+
+    users[user.value] = btoa(pass.value);
+    localStorage.setItem("fcm_users", JSON.stringify(users));
+    alert("Akun berhasil dibuat");
+}
+function login(){
+    if(users[user.value] && atob(users[user.value]) === pass.value){
+        localStorage.setItem("fcm_login", user.value);
+        showTools();
+    } else alert("Login gagal");
+}
+function logout(){
+    localStorage.removeItem("fcm_login");
+    location.reload();
+}
+function showTools(){
+    loginBox.style.display="none";
+    toolsBox.style.display="block";
+}
+
+/* ===== LOAD FILE ===== */
+fileInput.addEventListener("change", () => {
+    const file = fileInput.files[0];
+    if(!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        input.value = e.target.result;
+    };
+    reader.readAsText(file);
+});
+
+/* ===== TOOLS ===== */
+function toBase64(){
+    output.value = btoa(unescape(encodeURIComponent(input.value)));
+}
+function fromBase64(){
+    try{
+        output.value = decodeURIComponent(escape(atob(input.value)));
+    }catch{
+        alert("Base64 tidak valid");
+    }
+}
+function encrypt(){
+    output.value = btoa(input.value.split("").reverse().join(""));
+}
+function decrypt(){
+    try{
+        output.value = atob(input.value).split("").reverse().join("");
+    }catch{
+        alert("Data tidak valid");
+    }
+}
+
+/* ===== EXPORT ===== */
+function download(data, name, type){
+    const blob = new Blob([data], {type});
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    a.click();
+}
+function exportTXT(){
+    download(output.value, "fcm-result.txt", "text/plain");
+}
+function exportJSON(){
+    download(JSON.stringify({
+        input: input.value,
+        output: output.value,
+        time: new Date()
+    }, null, 2), "fcm-result.json", "application/json");
+}
+
+/* AUTO LOGIN */
+if(localStorage.getItem("fcm_login")) showTools();
+</script>
+
+</body>
+</html>
